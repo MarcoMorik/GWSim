@@ -15,7 +15,7 @@ args = parser.parse_args()
 MODELS_CONFIG = args.models_config
 DATASETS = parse_datasets(args.datasets)
 
-SIM_METRIC_CONFIG = "./configs/similarity_metric_config_local_global.json"
+SIM_METRIC_CONFIG = "./configs/similarity_metric_config_gromov.json"
 with open(SIM_METRIC_CONFIG, "r") as file:
     sim_method_config = json.load(file)
 
