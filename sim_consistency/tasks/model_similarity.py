@@ -176,13 +176,6 @@ class GWModelSimilarity(BaseModelSimilarity):
 
         self.output_root = None
 
-        if store_coupling:
-            assert output_root is not None, "Output root should be provided for storing coupling matrices"
-            self.output_root = Path(output_root)
-            assert self.output_root.exists(), "Output root path does not exist"
-
-        self.store_coupling = store_coupling
-
         if cost_fun not in ['euclidean', 'cosine']:
             raise ValueError(f"Unknown cost function: {cost_fun}")
         else:
@@ -196,6 +189,13 @@ class GWModelSimilarity(BaseModelSimilarity):
             raise ValueError(f"Unknown gromov type: {gromov_type}")
         else:
             self.gromov_type = gromov_type
+
+        if store_coupling:
+            assert output_root is not None, "Output root should be provided for storing coupling matrices"
+            self.output_root = os.path.join(output_root, self.get_name())
+            os.makedirs(self.output_root, exist_ok=True)
+
+        self.store_coupling = store_coupling
 
     def _prepare_sim_matrix(self) -> np.ndarray:
         return np.zeros((len(self.model_ids_with_idx), len(self.model_ids_with_idx)))
@@ -301,6 +301,7 @@ def compute_sim_matrix(
             max_workers=max_workers
         )
     elif sim_method =='gromov':
+        warnings.warn("Gromov-Wasserstein is a distance measure, not a similarity measure. ")
         model_similarity = GWModelSimilarity(
             feature_root=feature_root,
             subset_root=subset_root,

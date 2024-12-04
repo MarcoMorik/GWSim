@@ -77,7 +77,12 @@ def main_model_sim(base):
                                                             device=base.device,
                                                             sigma=base.sigma,
                                                             max_workers=base.max_workers,
-                                                            gromov_parameter=base.gromov_parameter)
+                                                            gromov_cost_fun=base.gromov_cost_fun,
+                                                            gromov_type=base.gromov_type,
+                                                            gromov_loss_fun=base.gromov_loss_fun,
+                                                            gromov_store_coupling=base.gromov_store_coupling,
+                                                            output_root=os.path.join(base.output_root, dataset_name)
+                                                            )
     # Save the similarity matrix
     out_path = os.path.join(base.output_root, dataset_name, method_slug)
     if not os.path.exists(out_path):
