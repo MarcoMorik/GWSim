@@ -301,7 +301,7 @@ def compute_sim_matrix(
             max_workers=max_workers
         )
     elif sim_method =='gromov':
-        warnings.warn("Gromov-Wasserstein is a distance measure, not a similarity measure. ")
+        warnings.warn("Output matrix contains pairwise distances between models (not similarities) since Gromov-Wasserstein computes distances.")
         model_similarity = GWModelSimilarity(
             feature_root=feature_root,
             subset_root=subset_root,
