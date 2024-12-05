@@ -33,26 +33,46 @@ if __name__ == "__main__":
         print(f"Computing model similarity matrix with config:\n{json.dumps(exp_dict, indent=4)}")
 
         max_workers = 8
-
-        job_cmd = f"""export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
-                      export XLA_PYTHON_CLIENT_ALLOCATOR=platform && \
-                      sim_consistency --dataset {datasets} \
-                                      --dataset_root {DATASETS_ROOT} \
-                                      --feature_root {FEATURES_ROOT} \
-                                      --output {MODEL_SIM_ROOT} \
-                                      --task=model_similarity \
-                                      --model_key {model_keys} \
-                                      --models_config_file {MODELS_CONFIG} \
-                                      --train_split train \
-                                      --sim_method {exp_dict['sim_method']} \
-                                      --sim_kernel {exp_dict['sim_kernel']} \
-                                      --rsa_method {exp_dict['rsa_method']} \
-                                      --corr_method {exp_dict['corr_method']} \
-                                      --sigma {exp_dict['sigma']} \
-                                      --max_workers {max_workers} \
-                                      --use_ds_subset \
-                                      --subset_root {SUBSET_ROOT}
-                        """
+        if exp_dict['sim_method'] == 'gromov':
+            job_cmd = f"""export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
+                          export XLA_PYTHON_CLIENT_ALLOCATOR=platform && \
+                          sim_consistency --dataset {datasets} \
+                                          --dataset_root {DATASETS_ROOT} \
+                                          --feature_root {FEATURES_ROOT} \
+                                          --output {MODEL_SIM_ROOT} \
+                                          --task=model_similarity \
+                                          --model_key {model_keys} \
+                                          --models_config_file {MODELS_CONFIG} \
+                                          --train_split train \
+                                          --sim_method {exp_dict['sim_method']} \
+                                          --gromov_cost_fun {exp_dict['gromov_cost_fun']} \
+                                          --gromov_type {exp_dict['gromov_type']} \
+                                          --gromov_loss_fun {exp_dict['gromov_loss_fun']} \
+                                          --gromov_store_coupling {exp_dict['gromov_store_coupling']} \
+                                          --max_workers {max_workers} \
+                                          --use_ds_subset \
+                                          --subset_root {SUBSET_ROOT}
+                                        """
+        else:
+            job_cmd = f"""export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
+                          export XLA_PYTHON_CLIENT_ALLOCATOR=platform && \
+                          sim_consistency --dataset {datasets} \
+                                          --dataset_root {DATASETS_ROOT} \
+                                          --feature_root {FEATURES_ROOT} \
+                                          --output {MODEL_SIM_ROOT} \
+                                          --task=model_similarity \
+                                          --model_key {model_keys} \
+                                          --models_config_file {MODELS_CONFIG} \
+                                          --train_split train \
+                                          --sim_method {exp_dict['sim_method']} \
+                                          --sim_kernel {exp_dict['sim_kernel']} \
+                                          --rsa_method {exp_dict['rsa_method']} \
+                                          --corr_method {exp_dict['corr_method']} \
+                                          --sigma {exp_dict['sigma']} \
+                                          --max_workers {max_workers} \
+                                          --use_ds_subset \
+                                          --subset_root {SUBSET_ROOT}
+                            """
         partition = 'gpu-2d' if exp_dict['sim_method'] == 'cka' else 'cpu-2d'
         mem = 150
 
