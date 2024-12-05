@@ -200,11 +200,25 @@ class GWModelSimilarity(BaseModelSimilarity):
     def _prepare_sim_matrix(self) -> np.ndarray:
         return np.zeros((len(self.model_ids_with_idx), len(self.model_ids_with_idx)))
 
+    def _compute_cdist_efficiently(self, C1: np.ndarray) -> np.ndarray:
+        # cdist is very inefficient, pure numpy computation works better
+        if self.cost_fun == 'euclidean':
+            squared_sum = np.sum(C1 ** 2, axis=1, keepdims=True)  # Shape: (n_samples, 1)
+            distances = np.sqrt(np.maximum(squared_sum + squared_sum.T - 2 * np.dot(C1, C1.T), 0))
+            return distances
+        elif self.cost_fun == 'cosine':
+            C1 /= np.linalg.norm(C1, axis=1, keepdims=True)
+            distances = 1 - np.dot(C1, C1.T)
+            return distances
+        else:
+            raise ValueError(f"Unknown cost function: {self.cost_fun}")
+
+
+
     def _load_feature(self, model_id: str) -> np.ndarray:
         features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
-        print("Debug print, loaded features of size: ", features.shape)
-        C_mat = cdist(features, features, metric=self.cost_fun)
-        print("Debug print, computed cost matrix of size: ", C_mat.shape)
+        # C_mat = cdist(features, features, metric=self.cost_fun)
+        C_mat = self._compute_cdist_efficiently(features)
         C_mat /= C_mat.max()
         return C_mat
 
