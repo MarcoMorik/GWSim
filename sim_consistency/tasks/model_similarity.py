@@ -240,6 +240,7 @@ class GWModelSimilarity(BaseModelSimilarity):
         # We need to take the square root to get the distance out of the gw_loss computed by OT
         return 0.5 * gw_loss**0.5, T
 
+
     def compute_similarity_matrix(self) -> np.ndarray:
         dist_matrix = self._prepare_sim_matrix()
         for idx1, model1 in tqdm(self.model_ids_with_idx, desc=f"Computing CKA matrix"):
@@ -252,7 +253,8 @@ class GWModelSimilarity(BaseModelSimilarity):
                 assert C_i.shape[0] == C_j.shape[0], \
                     (f"Number of samples should be equal for both models. (model1: {model1}, model2: {model2},"
                      f"feature_root: {self.feature_root})")
-
+                assert C_i.shape[0] == C_i.shape[1] & C_j.shape[0] == C_j.shape[1], \
+                    (f"Cost matrices should be square but found this shape for {model1}: {C_i.shape}, {model2}: {C_j.shape}")
                 gw_dist, T = self._comput_gromov_distance(C_i, C_j)
                 self.store_coupling_matrix(model1, model2, T)
 
