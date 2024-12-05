@@ -202,7 +202,9 @@ class GWModelSimilarity(BaseModelSimilarity):
 
     def _load_feature(self, model_id: str) -> np.ndarray:
         features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
+        print("Debug print, loaded features of size: ", features.shape)
         C_mat = cdist(features, features, metric=self.cost_fun)
+        print("Debug print, computed cost matrix of size: ", C_mat.shape)
         C_mat /= C_mat.max()
         return C_mat
 
