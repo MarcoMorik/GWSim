@@ -192,7 +192,7 @@ class GWModelSimilarity(BaseModelSimilarity):
 
         if store_coupling:
             assert output_root is not None, "Output root should be provided for storing coupling matrices"
-            self.output_root = os.path.join(output_root, self.get_name())
+            self.output_root = Path(os.path.join(output_root, self.get_name()))
             os.makedirs(self.output_root, exist_ok=True)
 
         self.store_coupling = store_coupling
@@ -229,7 +229,11 @@ class GWModelSimilarity(BaseModelSimilarity):
         elif self.gromov_type == "sampled_gromov":
             p = ot.utils.unif(C1.shape[0], type_as=C1)
             q = ot.utils.unif(C2.shape[0], type_as=C2)
-            T, log_gw = ot.gromov.sampled_gromov_wasserstein(C1, C2, p, q, loss_fun=self.loss_fun, log=True)
+            if self.loss_fun == "square_loss":
+                loss_fun = lambda x, y: (x - y) ** 2
+            else:
+                raise NotImplementedError("Currently do not support KL Loss for sampled_gromov")
+            T, log_gw = ot.gromov.sampled_gromov_wasserstein(C1, C2, p, q, loss_fun=loss_fun, log=True)
             gw_loss = log_gw["gw_dist_estimated"]
             # We could also check stability with log["gw_dist_std]
         elif self.gromov_type == "entropic_gromov":
