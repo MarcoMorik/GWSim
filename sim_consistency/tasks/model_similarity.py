@@ -243,11 +243,11 @@ class GWModelSimilarity(BaseModelSimilarity):
     def compute_similarity_matrix(self) -> np.ndarray:
         dist_matrix = self._prepare_sim_matrix()
         for idx1, model1 in tqdm(self.model_ids_with_idx, desc=f"Computing CKA matrix"):
-            C_i = self._load_features(model1)
+            C_i = self._load_feature(model1)
             for idx2, model2 in self.model_ids_with_idx:
                 if idx1 >= idx2:
                     continue
-                C_j = self._load_features(model2)
+                C_j = self._load_feature(model2)
 
                 assert C_i.shape[0] == C_j.shape[0], \
                     (f"Number of samples should be equal for both models. (model1: {model1}, model2: {model2},"
