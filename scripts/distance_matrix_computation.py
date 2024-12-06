@@ -47,14 +47,12 @@ if __name__ == "__main__":
                                           --sim_method {exp_dict['sim_method']} \
                                           --gromov_cost_fun {exp_dict['gromov_cost_fun']} \
                                           --gromov_type {exp_dict['gromov_type']} \
-                                          --gromov_loss_fun {exp_dict['gromov_loss_fun']} \ 
+                                          --gromov_loss_fun {exp_dict['gromov_loss_fun']} \
+                                          --gromov_store_coupling {exp_dict['gromov_store_coupling']} \
                                           --max_workers {max_workers} \
                                           --use_ds_subset \
                                           --subset_root {SUBSET_ROOT}
                                         """
-            if exp_dict['gromov_store_coupling']:
-                print("We store the coupling matrix for Gromov Wasserstein distance.", exp_dict['gromov_store_coupling'])
-                job_cmd += " --gromov_store_coupling"
         else:
             job_cmd = f"""export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
                           export XLA_PYTHON_CLIENT_ALLOCATOR=platform && \

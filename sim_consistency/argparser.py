@@ -7,6 +7,16 @@ from typing import Tuple, List
 from sim_consistency.tasks.linear_probe import Regularization
 from sim_consistency.utils.utils import as_list
 
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
+
 
 def get_parser_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
     """Get the parser arguments."""
@@ -107,7 +117,7 @@ def get_parser_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
        choices=['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov'])
     aa('--gromov_loss_fun', type=str, default='square_loss', help='The loss function used for gromov Wasserstein distance',
        choices=['square_loss', 'kl_loss'])
-    aa('--gromov_store_coupling', action='store_true', help='Store the coupling matrix for gromov Wasserstein distance')
+    aa('--gromov_store_coupling', type=str2bool, default=False, help='Store the coupling matrix for gromov Wasserstein distance')
 
     # STORAGE
     aa('--output_root', default="results", type=str,
