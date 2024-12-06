@@ -53,7 +53,8 @@ if __name__ == "__main__":
                                           --subset_root {SUBSET_ROOT}
                                         """
             if exp_dict['gromov_store_coupling']:
-                job_cmd += " --gromov_store_coupling "
+                print("We store the coupling matrix for Gromov Wasserstein distance.", exp_dict['gromov_store_coupling'])
+                job_cmd += " --gromov_store_coupling"
         else:
             job_cmd = f"""export XLA_PYTHON_CLIENT_PREALLOCATE=false && \
                           export XLA_PYTHON_CLIENT_ALLOCATOR=platform && \
