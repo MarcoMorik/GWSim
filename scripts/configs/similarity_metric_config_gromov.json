@@ -12,19 +12,5 @@
     "gromov_type": "full_gromov",
     "gromov_loss_fun": "square_loss",
     "gromov_store_coupling": true
-  },
-  {
-    "sim_method": "gromov",
-    "gromov_cost_fun": "euclidean",
-    "gromov_type": "sampled_gromov",
-    "gromov_loss_fun": "square_loss",
-    "gromov_store_coupling": true
-  },
-  {
-    "sim_method": "gromov",
-    "gromov_cost_fun": "euclidean",
-    "gromov_type": "entropic_gromov",
-    "gromov_loss_fun": "square_loss",
-    "gromov_store_coupling": true
   }
 ]
