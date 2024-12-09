@@ -185,7 +185,7 @@ class GWModelSimilarity(BaseModelSimilarity):
             raise ValueError(f"Unknown loss function: {loss_fun}")
         else:
             self.loss_fun = loss_fun
-        if gromov_type not in ['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov']:
+        if gromov_type not in ['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov', 'full_gromov_identityprior']:
             raise ValueError(f"Unknown gromov type: {gromov_type}")
         else:
             self.gromov_type = gromov_type
