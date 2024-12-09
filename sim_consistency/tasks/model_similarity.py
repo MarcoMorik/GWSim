@@ -240,6 +240,11 @@ class GWModelSimilarity(BaseModelSimilarity):
         elif self.gromov_type == "full_gromov":
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, log=True)
             T = log_gw['T']
+        elif self.gromov_type == "full_gromov_identityprior":
+            assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
+            T = np.eye(C1.shape[0])
+            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, G0=T, log=True)
+            T = log_gw['T']
         elif self.gromov_type == "sampled_gromov":
             p = ot.utils.unif(C1.shape[0], type_as=C1)
             q = ot.utils.unif(C2.shape[0], type_as=C2)
@@ -273,7 +278,7 @@ class GWModelSimilarity(BaseModelSimilarity):
                      f"feature_root: {self.feature_root})")
                 assert C_i.shape[0] == C_i.shape[1] & C_j.shape[0] == C_j.shape[1], \
                     (f"Cost matrices should be square but found this shape for {model1}: {C_i.shape}, {model2}: {C_j.shape}")
-                gw_dist, T = self._comput_gromov_distance(C_i, C_j)
+                gw_dist, T = self._comput_gromov_distance(C_i.copy(), C_j)
                 self.store_coupling_matrix(model1, model2, T)
 
                 dist_matrix[idx1, idx2] = gw_dist
