@@ -9,9 +9,9 @@
    {
     "sim_method": "gromov",
     "gromov_cost_fun": "cosine",
-    "gromov_type": "fixed_coupling",
+    "gromov_type": "full_gromov",
     "gromov_loss_fun": "square_loss",
-    "gromov_store_coupling": false
+    "gromov_store_coupling": true
   },
    {
     "sim_method": "gromov",

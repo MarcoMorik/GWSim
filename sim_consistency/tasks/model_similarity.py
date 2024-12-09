@@ -242,7 +242,7 @@ class GWModelSimilarity(BaseModelSimilarity):
             T = log_gw['T']
         elif self.gromov_type == "full_gromov_identityprior":
             assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
-            T = np.eye(C1.shape[0])
+            T = np.eye(C1.shape[0]) / float(C1.shape[0])
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, G0=T, log=True)
             T = log_gw['T']
         elif self.gromov_type == "sampled_gromov":
