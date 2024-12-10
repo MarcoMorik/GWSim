@@ -2,25 +2,66 @@
   {
     "sim_method": "gromov",
     "gromov_cost_fun": "euclidean",
-    "gromov_type": "full_gromov_identityprior",
-    "gromov_loss_fun": "square_loss",
-    "gromov_max_iter": 1e4,
-    "gromov_store_coupling": true
-  },
-  {
-    "sim_method": "gromov",
-    "gromov_cost_fun": "cosine",
     "gromov_type": "full_gromov",
     "gromov_loss_fun": "square_loss",
-    "gromov_max_iter": 1e4,
+    "gromov_max_iter": 1e1,
     "gromov_store_coupling": true
   },
   {
     "sim_method": "gromov",
-    "gromov_cost_fun": "cosine",
-    "gromov_type": "full_gromov_identityprior",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
     "gromov_loss_fun": "square_loss",
-    "gromov_max_iter": 1e4,
+    "gromov_max_iter": 1e2,
+    "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e3,
+    "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e5,
+    "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e6,
+    "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e7,
+    "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e8,
+    "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e9,
     "gromov_store_coupling": true
   }
+
 ]

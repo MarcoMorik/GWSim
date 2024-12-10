@@ -3,6 +3,7 @@ import os
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from tabnanny import verbose
 from typing import Tuple, List, Optional
 
 import numpy as np
@@ -223,7 +224,7 @@ class GWModelSimilarity(BaseModelSimilarity):
         return C_mat
 
     def get_name(self):
-        return f"gw_sim_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}"
+        return f"gw_sim_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.0e}"
 
     def store_coupling_matrix(self, model1: str, model2: str, coupling_matrix: np.ndarray) -> None:
         if self.store_coupling:
@@ -239,13 +240,13 @@ class GWModelSimilarity(BaseModelSimilarity):
                 raise NotImplementedError("Currently do not support KL Loss for fixed coupling")
         elif self.gromov_type == "full_gromov":
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
-                                                            log=True)
+                                                            log=True, verbose=True)
             T = log_gw['T']
         elif self.gromov_type == "full_gromov_identityprior":
             assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
             T = np.eye(C1.shape[0]) / float(C1.shape[0])
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
-                                                            G0=T, log=True)
+                                                            G0=T, log=True, verbose=True)
             T = log_gw['T']
         elif self.gromov_type == "sampled_gromov":
             p = ot.utils.unif(C1.shape[0], type_as=C1)
