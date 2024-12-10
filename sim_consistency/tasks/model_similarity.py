@@ -5,6 +5,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tabnanny import verbose
 from typing import Tuple, List, Optional
+import pickle
 
 import numpy as np
 import ot
@@ -226,10 +227,15 @@ class GWModelSimilarity(BaseModelSimilarity):
     def get_name(self):
         return f"gw_sim_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.0e}"
 
-    def store_coupling_matrix(self, model1: str, model2: str, coupling_matrix: np.ndarray) -> None:
+    def store_coupling_matrix(self, model1: str, model2: str, log_gw: dict) -> None:
         if self.store_coupling:
+            coupling_matrix = log_gw.pop("T")
             output_path = self.output_root / f"{model1}_{model2}_coupling.npy"
             np.save(output_path, coupling_matrix)
+            # Save the dictionary to a pickle file
+            with open(self.output_root / f"{model1}_{model2}_logs.pkl", "wb") as file:
+                pickle.dump(log_gw, file)
+
 
     def _compute_gromov_distance(self, C1: np.ndarray, C2: np.ndarray) -> (float, np.ndarray):
         if self.gromov_type == "fixed_coupling":
@@ -238,16 +244,17 @@ class GWModelSimilarity(BaseModelSimilarity):
                 gw_loss = np.mean((C1 - C2) ** 2)
             else:
                 raise NotImplementedError("Currently do not support KL Loss for fixed coupling")
+            log_gw = {"T": T}
         elif self.gromov_type == "full_gromov":
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
                                                             log=True, verbose=True)
-            T = log_gw['T']
+
         elif self.gromov_type == "full_gromov_identityprior":
             assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
             T = np.eye(C1.shape[0]) / float(C1.shape[0])
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
                                                             G0=T, log=True, verbose=True)
-            T = log_gw['T']
+
         elif self.gromov_type == "sampled_gromov":
             p = ot.utils.unif(C1.shape[0], type_as=C1)
             q = ot.utils.unif(C2.shape[0], type_as=C2)
@@ -258,15 +265,15 @@ class GWModelSimilarity(BaseModelSimilarity):
             T, log_gw = ot.gromov.sampled_gromov_wasserstein(C1, C2, p, q, loss_fun=loss_fun, max_iter=self.max_iter,
                                                              log=True)
             gw_loss = log_gw["gw_dist_estimated"]
+            log_gw["T"] = T
             # We could also check stability with log["gw_dist_std]
         elif self.gromov_type == "entropic_gromov":
             gw_loss, log_gw = ot.gromov.entropic_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun,
                                                                      max_iter=self.max_iter, log=True)
-            T = log_gw['T']
         else:
             raise NotImplementedError(f"Unknown gromov type: {self.gromov_type}")
         # We need to take the square root to get the distance out of the gw_loss computed by OT
-        return 0.5 * gw_loss ** 0.5, T
+        return 0.5 * gw_loss ** 0.5, log_gw
 
     def compute_similarity_matrix(self) -> np.ndarray:
         dist_matrix = self._prepare_sim_matrix()
@@ -283,8 +290,8 @@ class GWModelSimilarity(BaseModelSimilarity):
                 assert C_i.shape[0] == C_i.shape[1] & C_j.shape[0] == C_j.shape[1], \
                     (
                         f"Cost matrices should be square but found this shape for {model1}: {C_i.shape}, {model2}: {C_j.shape}")
-                gw_dist, T = self._compute_gromov_distance(C_i.copy(), C_j)
-                self.store_coupling_matrix(model1, model2, T)
+                gw_dist, log_gw = self._compute_gromov_distance(C_i.copy(), C_j)
+                self.store_coupling_matrix(model1, model2, log_gw)
 
                 dist_matrix[idx1, idx2] = gw_dist
                 dist_matrix[idx2, idx1] = gw_dist
