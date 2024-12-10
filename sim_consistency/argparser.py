@@ -117,6 +117,7 @@ def get_parser_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
        choices=['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov', 'full_gromov_identityprior'])
     aa('--gromov_loss_fun', type=str, default='square_loss', help='The loss function used for gromov Wasserstein distance',
        choices=['square_loss', 'kl_loss'])
+    aa('--gromov_max_iter', type=int, default=1e4, help='The maximum number of iterations for Gromov Wasserstein distance.')
     aa('--gromov_store_coupling', type=str2bool, default=False, help='Store the coupling matrix for gromov Wasserstein distance')
 
     # STORAGE

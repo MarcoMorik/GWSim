@@ -1,0 +1,40 @@
+{
+    "OpenCLIP_RN50_openai": {
+        "model_name": "OpenCLIP",
+        "source": "custom",
+        "model_parameters": {
+            "variant": "RN50",
+            "dataset": "openai"
+        },
+        "module_name": "visual",
+        "objective": "Image-Text",
+        "dataset": "WIT-400M",
+        "architecture_class": "Convolutional",
+        "architecture": "ResNet",
+        "embedding_dim": 1024,
+        "alignment": null,
+        "dataset_class": "Large",
+        "size": 102007137,
+        "size_fmt": "102.0M",
+        "size_class": "medium"
+    },
+    "OpenCLIP_ViT-B-16_openai": {
+        "model_name": "OpenCLIP",
+        "source": "custom",
+        "model_parameters": {
+            "variant": "ViT-B-16",
+            "dataset": "openai"
+        },
+        "module_name": "visual",
+        "objective": "Image-Text",
+        "dataset": "WIT-400M",
+        "architecture_class": "Transformer",
+        "architecture": "ViT",
+        "embedding_dim": 512,
+        "alignment": null,
+        "dataset_class": "Large",
+        "size": 149620737,
+        "size_fmt": "149.6M",
+        "size_class": "medium"
+    }
+}

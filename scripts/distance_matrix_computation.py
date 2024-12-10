@@ -48,6 +48,7 @@ if __name__ == "__main__":
                                           --gromov_cost_fun {exp_dict['gromov_cost_fun']} \
                                           --gromov_type {exp_dict['gromov_type']} \
                                           --gromov_loss_fun {exp_dict['gromov_loss_fun']} \
+                                          --gromov_max_iter {exp_dict['gromov_max_iter']} \
                                           --gromov_store_coupling {exp_dict['gromov_store_coupling']} \
                                           --max_workers {max_workers} \
                                           --use_ds_subset \
