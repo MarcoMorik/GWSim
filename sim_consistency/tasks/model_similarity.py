@@ -352,7 +352,7 @@ def compute_sim_matrix(
             cost_fun=gromov_cost_fun,
             gromov_type=gromov_type,
             loss_fun=gromov_loss_fun,
-            max_iter=max_iter,
+            max_iter=gromov_max_iter,
             max_workers=max_workers,
             store_coupling=gromov_store_coupling,
             output_root=output_root
