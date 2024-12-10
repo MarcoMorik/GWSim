@@ -176,7 +176,7 @@ class GWModelSimilarity(BaseModelSimilarity):
                          max_workers=max_workers)
 
         self.output_root = None
-
+        self.max_iter = max_iter
         if cost_fun not in ['euclidean', 'cosine']:
             raise ValueError(f"Unknown cost function: {cost_fun}")
         else:
@@ -198,7 +198,7 @@ class GWModelSimilarity(BaseModelSimilarity):
             os.makedirs(self.output_root, exist_ok=True)
 
         self.store_coupling = store_coupling
-        self.max_iter = max_iter
+
 
     def _prepare_sim_matrix(self) -> np.ndarray:
         return np.zeros((len(self.model_ids_with_idx), len(self.model_ids_with_idx)))
