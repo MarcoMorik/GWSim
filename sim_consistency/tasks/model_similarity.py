@@ -229,7 +229,7 @@ class GWModelSimilarity(BaseModelSimilarity):
         return C_mat
 
     def get_name(self):
-        return f"gw_sim_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}"
+        return f"gw_sim_Shuffled_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}"
 
     def store_coupling_matrix(self, model1: str, model2: str, coupling_matrix: np.ndarray) -> None:
         if self.store_coupling:
