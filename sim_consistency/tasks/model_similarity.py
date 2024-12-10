@@ -245,7 +245,7 @@ class GWModelSimilarity(BaseModelSimilarity):
                 raise NotImplementedError("Currently do not support KL Loss for fixed coupling")
         elif self.gromov_type == "full_gromov":
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
-                                                            log=True)
+                                                            log=True, verbose=True)
             T = log_gw['T']
         elif self.gromov_type == "full_gromov_identityprior":
             assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
