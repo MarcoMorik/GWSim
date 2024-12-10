@@ -290,7 +290,7 @@ class GWModelSimilarity(BaseModelSimilarity):
                 assert C_i.shape[0] == C_i.shape[1] & C_j.shape[0] == C_j.shape[1], \
                     (
                         f"Cost matrices should be square but found this shape for {model1}: {C_i.shape}, {model2}: {C_j.shape}")
-                gw_dist, T = self._comput_gromov_distance(C_i.copy(), C_j)
+                gw_dist, T = self._compute_gromov_distance(C_i.copy(), C_j)
                 self.store_coupling_matrix(model1, model2, T)
 
                 dist_matrix[idx1, idx2] = gw_dist
