@@ -198,6 +198,9 @@ class GWModelSimilarity(BaseModelSimilarity):
 
         self.store_coupling = store_coupling
         self.max_iter = max_iter
+        self.ordering = None
+
+
 
     def _prepare_sim_matrix(self) -> np.ndarray:
         return np.zeros((len(self.model_ids_with_idx), len(self.model_ids_with_idx)))
@@ -217,8 +220,11 @@ class GWModelSimilarity(BaseModelSimilarity):
 
     def _load_feature(self, model_id: str) -> np.ndarray:
         features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
+        if self.ordering is None:
+            np.random.seed(42)
+            self.ordering = np.random.permutation(features.shape[0])
         # C_mat = cdist(features, features, metric=self.cost_fun)
-        C_mat = self._compute_cdist_efficiently(features)
+        C_mat = self._compute_cdist_efficiently(features[self.ordering])
         C_mat /= C_mat.max()
         return C_mat
 
@@ -271,6 +277,8 @@ class GWModelSimilarity(BaseModelSimilarity):
         dist_matrix = self._prepare_sim_matrix()
         for idx1, model1 in tqdm(self.model_ids_with_idx, desc=f"Computing CKA matrix"):
             C_i = self._load_feature(model1)
+
+
             for idx2, model2 in self.model_ids_with_idx:
                 if idx1 >= idx2:
                     continue
