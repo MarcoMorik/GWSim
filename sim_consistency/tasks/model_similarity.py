@@ -188,7 +188,7 @@ class GWModelSimilarity(BaseModelSimilarity):
         else:
             self.loss_fun = loss_fun
         if gromov_type not in ['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov',
-                               'full_gromov_identityprior']:
+                               'full_gromov_identityprior', "BAPG_gromov", "BAPG_gromov_identityprior"]:
             raise ValueError(f"Unknown gromov type: {gromov_type}")
         else:
             self.gromov_type = gromov_type
@@ -255,6 +255,14 @@ class GWModelSimilarity(BaseModelSimilarity):
             gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
                                                             G0=T, log=True, verbose=True)
 
+        elif self.gromov_type == "BAPG_gromov":
+            gw_loss, log_gw = ot.gromov.BAPG_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
+                                                            log=True, verbose=True)
+        elif self.gromov_type == "BAPG_gromov_identityprior":
+            assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
+            T = np.eye(C1.shape[0]) / float(C1.shape[0])
+            gw_loss, log_gw = ot.gromov.BAPG_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
+                                                            G0=T, log=True, verbose=True)
         elif self.gromov_type == "sampled_gromov":
             p = ot.utils.unif(C1.shape[0], type_as=C1)
             q = ot.utils.unif(C2.shape[0], type_as=C2)
@@ -264,6 +272,7 @@ class GWModelSimilarity(BaseModelSimilarity):
                 raise NotImplementedError("Currently do not support KL Loss for sampled_gromov")
             T, log_gw = ot.gromov.sampled_gromov_wasserstein(C1, C2, p, q, loss_fun=loss_fun, max_iter=self.max_iter,
                                                              log=True)
+            # TODO double check if gw_loss is squared or not!
             gw_loss = log_gw["gw_dist_estimated"]
             log_gw["T"] = T
             # We could also check stability with log["gw_dist_std]
