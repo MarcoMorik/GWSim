@@ -219,14 +219,18 @@ class GWModelSimilarity(BaseModelSimilarity):
             raise ValueError(f"Unknown cost function: {self.cost_fun}")
 
     def _load_feature(self, model_id: str) -> np.ndarray:
-        features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
+        if "TEST" in model_id:
+            model_id = model_id.replace("TEST", "")
+            features = load_features(self.feature_root, model_id, "test", self.subset_indices).numpy()
+        else:
+            features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
         # C_mat = cdist(features, features, metric=self.cost_fun)
         C_mat = self._compute_cdist_efficiently(features)
         C_mat /= C_mat.max()
         return C_mat
 
     def get_name(self):
-        return f"gw_sim_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_epsilon_{self.max_iter:.0e}"
+        return f"gw_sim_TrainTest_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.0e}"
 
     def store_coupling_matrix(self, model1: str, model2: str, log_gw: dict) -> None:
         if self.store_coupling:
@@ -247,13 +251,20 @@ class GWModelSimilarity(BaseModelSimilarity):
                 raise NotImplementedError("Currently do not support KL Loss for fixed coupling")
             log_gw = {"T": T}
         elif self.gromov_type == "full_gromov":
-            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, epsilon=self.max_iter,
+            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
                                                             log=True, verbose=True)
 
         elif self.gromov_type == "full_gromov_identityprior":
-            assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
-            T = np.eye(C1.shape[0]) / float(C1.shape[0])
-            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, epsilon=self.max_iter,
+            #assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
+            # When not the same shape, we init a extended diagonal matrix
+            if C1.shape[0] == C2.shape[0]:
+                T = np.eye(C1.shape[0]) / float(C1.shape[0])
+            elif C1.shape[0] > C2.shape[0]:
+                T = self.create_biased_transportmap( C2.shape[0],C1.shape[0]).T
+            else:
+                T = self.create_biased_transportmap( C1.shape[0],C2.shape[0])
+
+            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
                                                             G0=T, log=True, verbose=True)
 
         elif self.gromov_type == "BAPG_gromov":
@@ -285,6 +296,29 @@ class GWModelSimilarity(BaseModelSimilarity):
         # We need to take the square root to get the distance out of the gw_loss computed by OT
         return 0.5 * gw_loss ** 0.5, log_gw
 
+    def create_biased_transportmap(self, m: int,n: int) -> np.ndarray:
+        assert m < n, "Number of rows should be smaller than number of columns"
+        # Initialize the transport map
+        T = np.zeros((m, n))
+
+        # Calculate the base block size and the remainder
+        base_block_size = n // m
+        remainder = n % m
+
+        # Assign mass to each block
+        col_start = 0
+        for i in range(m):
+            # Calculate the size of the current block (add one column for the remainder if needed)
+            block_size = base_block_size + (1 if i < remainder else 0)
+            col_end = col_start + block_size
+
+            # Assign mass evenly to the current block
+            T[i, col_start:col_end] = 1 / block_size
+
+            # Update the start of the next block
+            col_start = col_end
+
+        return T/m
     def compute_similarity_matrix(self) -> np.ndarray:
         dist_matrix = self._prepare_sim_matrix()
         for idx1, model1 in tqdm(self.model_ids_with_idx, desc=f"Computing CKA matrix"):
@@ -294,9 +328,9 @@ class GWModelSimilarity(BaseModelSimilarity):
                     continue
                 C_j = self._load_feature(model2)
 
-                assert C_i.shape[0] == C_j.shape[0], \
-                    (f"Number of samples should be equal for both models. (model1: {model1}, model2: {model2},"
-                     f"feature_root: {self.feature_root})")
+                #assert C_i.shape[0] == C_j.shape[0], \
+                #    (f"Number of samples should be equal for both models. (model1: {model1}, model2: {model2},"
+                #     f"feature_root: {self.feature_root})")
                 assert C_i.shape[0] == C_i.shape[1] & C_j.shape[0] == C_j.shape[1], \
                     (
                         f"Cost matrices should be square but found this shape for {model1}: {C_i.shape}, {model2}: {C_j.shape}")
