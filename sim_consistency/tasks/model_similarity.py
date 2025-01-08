@@ -229,6 +229,13 @@ class GWModelSimilarity(BaseModelSimilarity):
         C_mat /= C_mat.max()
         return C_mat
 
+    def load_model_ids(self, model_ids: List[str]) -> None:
+        assert os.path.exists(self.feature_root), "Feature root path non-existent"
+        #self.model_ids = check_models(self.feature_root, model_ids, self.split)
+        # Disable Check for very dirty TEST check
+        self.model_ids = model_ids
+        self.model_ids_with_idx = [(i, model_id) for i, model_id in enumerate(self.model_ids)]
+
     def get_name(self):
         return f"gw_sim_TrainTest_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.0e}"
 
