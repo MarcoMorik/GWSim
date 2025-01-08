@@ -179,7 +179,7 @@ class GWModelSimilarity(BaseModelSimilarity):
         self.output_root = None
         # TODO for simplicity I will use max iter as epsilon to test
         self.max_iter = max_iter
-        if cost_fun not in ['euclidean', 'cosine']:
+        if cost_fun not in ['euclidean', 'cosine', "tanhnormalized_euclidean"]:
             raise ValueError(f"Unknown cost function: {cost_fun}")
         else:
             self.cost_fun = cost_fun
@@ -215,6 +215,11 @@ class GWModelSimilarity(BaseModelSimilarity):
             C1 /= np.linalg.norm(C1, axis=1, keepdims=True)
             distances = 1 - np.dot(C1, C1.T)
             return distances
+        elif self.cost_fun == "tanhnormalized_euclidean":
+            C1 = np.tanh(0.01*(C1-np.mean(C1,axis=0,keepdims=True)) / np.std(C1, axis=0, keepdims=True))
+            squared_sum = np.sum(C1 ** 2, axis=1, keepdims=True)  # Shape: (n_samples, 1)
+            distances = np.sqrt(np.maximum(squared_sum + squared_sum.T - 2 * np.dot(C1, C1.T), 0))
+            return distances
         else:
             raise ValueError(f"Unknown cost function: {self.cost_fun}")
 
@@ -237,7 +242,7 @@ class GWModelSimilarity(BaseModelSimilarity):
         self.model_ids_with_idx = [(i, model_id) for i, model_id in enumerate(self.model_ids)]
 
     def get_name(self):
-        return f"gw_sim_TrainTest_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.0e}"
+        return f"gw_sim_TrainTest_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.1e}"
 
     def store_coupling_matrix(self, model1: str, model2: str, log_gw: dict) -> None:
         if self.store_coupling:
@@ -296,8 +301,9 @@ class GWModelSimilarity(BaseModelSimilarity):
             log_gw["T"] = T
             # We could also check stability with log["gw_dist_std]
         elif self.gromov_type == "entropic_gromov":
+            print("Warning, entropic gromov missueses max_iter")
             gw_loss, log_gw = ot.gromov.entropic_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun,
-                                                                     max_iter=self.max_iter, log=True)
+                                                                     epsilon=self.max_iter, log=True)
         else:
             raise NotImplementedError(f"Unknown gromov type: {self.gromov_type}")
         # We need to take the square root to get the distance out of the gw_loss computed by OT
