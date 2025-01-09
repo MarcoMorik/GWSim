@@ -1,0 +1,35 @@
+[
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "entropic_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1,
+    "gromov_store_coupling": true
+  },
+  {
+  "sim_method": "gromov",
+  "gromov_cost_fun": "euclidean",
+  "gromov_type": "entropic_gromov",
+  "gromov_loss_fun": "square_loss",
+  "gromov_max_iter": 0.1,
+  "gromov_store_coupling": true
+  },
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "euclidean",
+    "gromov_type": "entropic_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 0.5,
+    "gromov_store_coupling": true
+  },
+
+  {
+    "sim_method": "gromov",
+    "gromov_cost_fun": "tanhnormalized_euclidean",
+    "gromov_type": "full_gromov",
+    "gromov_loss_fun": "square_loss",
+    "gromov_max_iter": 1e5,
+    "gromov_store_coupling": true
+  }
+]

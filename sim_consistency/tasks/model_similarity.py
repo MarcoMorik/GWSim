@@ -3,11 +3,12 @@ import os
 import warnings
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from tabnanny import verbose
 from typing import Tuple, List, Optional
+import pickle
 
 import numpy as np
 import ot
-from scipy.spatial.distance import cdist
 from thingsvision.core.cka import get_cka
 from thingsvision.core.rsa import compute_rdm, correlate_rdms
 from tqdm import tqdm
@@ -164,9 +165,10 @@ class GWModelSimilarity(BaseModelSimilarity):
             subset_root: Optional[str],
             split: str = 'train',
             device: str = 'cuda',
-            cost_fun: str = 'euclidian',
-            fixed_coupling: bool = False,
+            cost_fun: str = 'euclidean',
+            gromov_type: str = 'fixed_coupling',
             loss_fun: str = 'square_loss',
+            max_iter: int = 1e4,
             max_workers: int = 4,
             store_coupling: bool = False,
             output_root: Optional[str] = None,
@@ -175,15 +177,9 @@ class GWModelSimilarity(BaseModelSimilarity):
                          max_workers=max_workers)
 
         self.output_root = None
-
-        if store_coupling:
-            assert output_root is not None, "Output root should be provided for storing coupling matrices"
-            self.output_root = Path(output_root)
-            assert self.output_root.exists(), "Output root path does not exist"
-
-        self.store_coupling = store_coupling
-
-        if cost_fun not in ['euclidian', 'cosine']:
+        # TODO for simplicity I will use max iter as epsilon to test
+        self.max_iter = max_iter
+        if cost_fun not in ['euclidean', 'cosine', "tanhnormalized_euclidean"]:
             raise ValueError(f"Unknown cost function: {cost_fun}")
         else:
             self.cost_fun = cost_fun
@@ -192,76 +188,171 @@ class GWModelSimilarity(BaseModelSimilarity):
             raise ValueError(f"Unknown loss function: {loss_fun}")
         else:
             self.loss_fun = loss_fun
+        if gromov_type not in ['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov',
+                               'full_gromov_identityprior', "BAPG_gromov", "BAPG_gromov_identityprior"]:
+            raise ValueError(f"Unknown gromov type: {gromov_type}")
+        else:
+            self.gromov_type = gromov_type
 
-        self.fixed_coupling = fixed_coupling
+        if store_coupling:
+            assert output_root is not None, "Output root should be provided for storing coupling matrices"
+            self.output_root = Path(os.path.join(output_root, self.get_name()))
+            os.makedirs(self.output_root, exist_ok=True)
+
+        self.store_coupling = store_coupling
+
 
     def _prepare_sim_matrix(self) -> np.ndarray:
         return np.zeros((len(self.model_ids_with_idx), len(self.model_ids_with_idx)))
 
+    def _compute_cdist_efficiently(self, C1: np.ndarray) -> np.ndarray:
+        # cdist is very inefficient, pure numpy computation works better
+        if self.cost_fun == 'euclidean':
+            squared_sum = np.sum(C1 ** 2, axis=1, keepdims=True)  # Shape: (n_samples, 1)
+            distances = np.sqrt(np.maximum(squared_sum + squared_sum.T - 2 * np.dot(C1, C1.T), 0))
+            return distances
+        elif self.cost_fun == 'cosine':
+            C1 /= np.linalg.norm(C1, axis=1, keepdims=True)
+            distances = 1 - np.dot(C1, C1.T)
+            return distances
+        elif self.cost_fun == "tanhnormalized_euclidean":
+            C1 = np.tanh(0.01*(C1-np.mean(C1,axis=0,keepdims=True)) / np.std(C1, axis=0, keepdims=True))
+            squared_sum = np.sum(C1 ** 2, axis=1, keepdims=True)  # Shape: (n_samples, 1)
+            distances = np.sqrt(np.maximum(squared_sum + squared_sum.T - 2 * np.dot(C1, C1.T), 0))
+            return distances
+        else:
+            raise ValueError(f"Unknown cost function: {self.cost_fun}")
+
     def _load_feature(self, model_id: str) -> np.ndarray:
-        features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
-        C_mat = cdist(features.numpy(), features, metric=self.cost_fun)
+        if "TEST" in model_id:
+            model_id = model_id.replace("TEST", "")
+            features = load_features(self.feature_root, model_id, "test", self.subset_indices).numpy()
+        else:
+            features = load_features(self.feature_root, model_id, self.split, self.subset_indices).numpy()
+        # C_mat = cdist(features, features, metric=self.cost_fun)
+        C_mat = self._compute_cdist_efficiently(features)
         C_mat /= C_mat.max()
         return C_mat
 
-    def get_name(self):
-        return f"gw_sim_cost_{'fixed_coupling' if self.fixed_coupling else 'learned_coupling'}_fun_{self.cost_fun}_loss_fun_{self.loss_fun}"
+    def load_model_ids(self, model_ids: List[str]) -> None:
+        assert os.path.exists(self.feature_root), "Feature root path non-existent"
+        #self.model_ids = check_models(self.feature_root, model_ids, self.split)
+        # Disable Check for very dirty TEST check
+        self.model_ids = model_ids
+        self.model_ids_with_idx = [(i, model_id) for i, model_id in enumerate(self.model_ids)]
 
-    def store_coupling_matrix(self, model1: str, model2: str, coupling_matrix: np.ndarray) -> None:
+    def get_name(self):
+        return f"gw_sim_TrainTest_{self.gromov_type}_cost_{self.cost_fun}_loss_fun_{self.loss_fun}_maxiter_{self.max_iter:.1e}"
+
+    def store_coupling_matrix(self, model1: str, model2: str, log_gw: dict) -> None:
         if self.store_coupling:
+            coupling_matrix = log_gw.pop("T")
             output_path = self.output_root / f"{model1}_{model2}_coupling.npy"
             np.save(output_path, coupling_matrix)
+            # Save the dictionary to a pickle file
+            with open(self.output_root / f"{model1}_{model2}_logs.pkl", "wb") as file:
+                pickle.dump(log_gw, file)
 
-    def _comput_gromov_distance(self, C1: np.ndarray, C2: np.ndarray, T: np.ndarray) -> float:
-        # simple get_backend as the full one will be handled in gromov_wasserstein
-        nx = ot.backend.get_backend(C1, C2)
 
-        # init marginals if set as None
-        p = ot.utils.unif(C1.shape[0], type_as=C1)
-        q = ot.utils.unif(C2.shape[0], type_as=C1)
+    def _compute_gromov_distance(self, C1: np.ndarray, C2: np.ndarray) -> (float, np.ndarray):
+        if self.gromov_type == "fixed_coupling":
+            T = np.eye(C1.shape[0])
+            if self.loss_fun == "square_loss":
+                gw_loss = np.mean((C1 - C2) ** 2)
+            else:
+                raise NotImplementedError("Currently do not support KL Loss for fixed coupling")
+            log_gw = {"T": T}
+        elif self.gromov_type == "full_gromov":
+            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
+                                                            log=True, verbose=True)
 
-        if self.loss_fun == "square_loss":
-            gC1 = 2 * C1 * nx.outer(p, p) - 2 * nx.dot(T, nx.dot(C2, T.T))
-            gC2 = 2 * C2 * nx.outer(q, q) - 2 * nx.dot(T.T, nx.dot(C1, T))
-        elif self.loss_fun == "kl_loss":
-            gC1 = nx.log(C1 + 1e-15) * nx.outer(p, p) - nx.dot(
-                T, nx.dot(nx.log(C2 + 1e-15), T.T)
-            )
-            gC2 = -nx.dot(T.T, nx.dot(C1, T)) / (C2 + 1e-15) + nx.outer(q, q)
+        elif self.gromov_type == "full_gromov_identityprior":
+            #assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
+            # When not the same shape, we init a extended diagonal matrix
+            if C1.shape[0] == C2.shape[0]:
+                T = np.eye(C1.shape[0]) / float(C1.shape[0])
+            elif C1.shape[0] > C2.shape[0]:
+                T = self.create_biased_transportmap( C2.shape[0],C1.shape[0]).T
+            else:
+                T = self.create_biased_transportmap( C1.shape[0],C2.shape[0])
 
-        gw = nx.set_gradients(
-            gw,
-            (p, q, C1, C2),
-            (
-                log_gw["u"] - nx.mean(log_gw["u"]),
-                log_gw["v"] - nx.mean(log_gw["v"]),
-                gC1,
-                gC2,
-            ),
-        )
+            gw_loss, log_gw = ot.gromov.gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
+                                                            G0=T, log=True, verbose=True)
 
+        elif self.gromov_type == "BAPG_gromov":
+            gw_loss, log_gw = ot.gromov.BAPG_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
+                                                            log=True, verbose=True)
+        elif self.gromov_type == "BAPG_gromov_identityprior":
+            assert C1.shape[0] == C2.shape[0], "Both cost matrices should have the same number of samples for identity"
+            T = np.eye(C1.shape[0]) / float(C1.shape[0])
+            gw_loss, log_gw = ot.gromov.BAPG_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun, max_iter=self.max_iter,
+                                                            G0=T, log=True, verbose=True)
+        elif self.gromov_type == "sampled_gromov":
+            p = ot.utils.unif(C1.shape[0], type_as=C1)
+            q = ot.utils.unif(C2.shape[0], type_as=C2)
+            if self.loss_fun == "square_loss":
+                loss_fun = lambda x, y: (x - y) ** 2
+            else:
+                raise NotImplementedError("Currently do not support KL Loss for sampled_gromov")
+            T, log_gw = ot.gromov.sampled_gromov_wasserstein(C1, C2, p, q, loss_fun=loss_fun, max_iter=self.max_iter,
+                                                             log=True)
+            # TODO double check if gw_loss is squared or not!
+            gw_loss = log_gw["gw_dist_estimated"]
+            log_gw["T"] = T
+            # We could also check stability with log["gw_dist_std]
+        elif self.gromov_type == "entropic_gromov":
+            print("Warning, entropic gromov missueses max_iter")
+            gw_loss, log_gw = ot.gromov.entropic_gromov_wasserstein2(C1, C2, loss_fun=self.loss_fun,
+                                                                     epsilon=self.max_iter, log=True)
+        else:
+            raise NotImplementedError(f"Unknown gromov type: {self.gromov_type}")
+        # We need to take the square root to get the distance out of the gw_loss computed by OT
+        return 0.5 * gw_loss ** 0.5, log_gw
+
+    def create_biased_transportmap(self, m: int,n: int) -> np.ndarray:
+        assert m < n, "Number of rows should be smaller than number of columns"
+        # Initialize the transport map
+        T = np.zeros((m, n))
+
+        # Calculate the base block size and the remainder
+        base_block_size = n // m
+        remainder = n % m
+
+        # Assign mass to each block
+        col_start = 0
+        for i in range(m):
+            # Calculate the size of the current block (add one column for the remainder if needed)
+            block_size = base_block_size + (1 if i < remainder else 0)
+            col_end = col_start + block_size
+
+            # Assign mass evenly to the current block
+            T[i, col_start:col_end] = 1 / block_size
+
+            # Update the start of the next block
+            col_start = col_end
+
+        return T/m
     def compute_similarity_matrix(self) -> np.ndarray:
         dist_matrix = self._prepare_sim_matrix()
         for idx1, model1 in tqdm(self.model_ids_with_idx, desc=f"Computing CKA matrix"):
-            C_i = load_features(self.feature_root, model1, self.split, self.subset_indices)
+            C_i = self._load_feature(model1)
             for idx2, model2 in self.model_ids_with_idx:
                 if idx1 >= idx2:
                     continue
-                C_j = load_features(self.feature_root, model2, self.split, self.subset_indices)
+                C_j = self._load_feature(model2)
 
-                assert C_i.shape[0] == C_j.shape[0], \
-                    (f"Number of samples should be equal for both models. (model1: {model1}, model2: {model2},"
-                     f"feature_root: {self.feature_root})")
+                #assert C_i.shape[0] == C_j.shape[0], \
+                #    (f"Number of samples should be equal for both models. (model1: {model1}, model2: {model2},"
+                #     f"feature_root: {self.feature_root})")
+                assert C_i.shape[0] == C_i.shape[1] & C_j.shape[0] == C_j.shape[1], \
+                    (
+                        f"Cost matrices should be square but found this shape for {model1}: {C_i.shape}, {model2}: {C_j.shape}")
+                gw_dist, log_gw = self._compute_gromov_distance(C_i.copy(), C_j)
+                self.store_coupling_matrix(model1, model2, log_gw)
 
-                if self.fixed_coupling:
-                    T = np.eye(C_i.shape[0])
-
-                else:
-                    gw_dist, log_gw = ot.gromov.gromov_wasserstein2(C_i, C_j, loss_fun=self.loss_fun, log=True)
-
-                self.store_coupling_matrix(model1, model2, log_gw['T'])
                 dist_matrix[idx1, idx2] = gw_dist
                 dist_matrix[idx2, idx1] = gw_dist
+        return dist_matrix
 
 
 def compute_sim_matrix(
@@ -278,6 +369,12 @@ def compute_sim_matrix(
         device: str = 'cuda',
         sigma: Optional[float] = None,
         max_workers: int = 4,
+        gromov_cost_fun: str = 'euclidean',
+        gromov_type: str = 'fixed_coupling',
+        gromov_loss_fun: str = 'square_loss',
+        gromov_max_iter: int = 1e4,
+        gromov_store_coupling: bool = False,
+        output_root: Optional[str] = None,
 ) -> Tuple[np.ndarray, List[str], str]:
     if sim_method == 'cka':
         model_similarity = CKAModelSimilarity(
@@ -299,8 +396,26 @@ def compute_sim_matrix(
             device=device,
             rsa_method=rsa_method,
             corr_method=corr_method,
-            max_workers=max_workers
+            max_workers=max_workers,
         )
+    elif sim_method == 'gromov':
+        warnings.warn(
+            "Output matrix contains pairwise distances between models (not similarities) since Gromov-Wasserstein computes distances.")
+        model_similarity = GWModelSimilarity(
+            feature_root=feature_root,
+            subset_root=subset_root,
+            split=split,
+            device=device,
+            cost_fun=gromov_cost_fun,
+            gromov_type=gromov_type,
+            loss_fun=gromov_loss_fun,
+            max_iter=gromov_max_iter,
+            max_workers=max_workers,
+            store_coupling=gromov_store_coupling,
+            output_root=output_root
+        )
+
+
     else:
         raise ValueError(f"Unknown similarity method: {sim_method}")
 

@@ -1,10 +1,21 @@
 import argparse
 import json
 import os
+from random import choices
 from typing import Tuple, List
 
 from sim_consistency.tasks.linear_probe import Regularization
 from sim_consistency.utils.utils import as_list
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 
 def get_parser_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
@@ -83,7 +94,7 @@ def get_parser_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
 
     ### Model similarity
     aa('--sim_method', type=str, default="cka",
-       choices=['cka', 'rsa'], help="Method to use for model similarity task.")
+       choices=['cka', 'rsa', 'gromov'], help="Method to use for model similarity task.")
     aa('--sim_kernel', type=str, default="linear",
        choices=['linear', 'rbf'], help="Kernel used during CKA. Ignored if sim_method is rsa.")
     aa('--rsa_method', type=str, default="correlation",
@@ -98,6 +109,16 @@ def get_parser_args() -> Tuple[argparse.ArgumentParser, argparse.Namespace]:
     aa('--use_ds_subset', action="store_true", help="Compute model similarities on precomputed subset of the dataset.")
     aa('--subset_root', type=str, help="Path to the root folder where the dataset subset indices are stored. "
                                        "Only used if use_ds_subset is True.")
+
+    # Gromov Wasserstein Parameter:
+    aa('--gromov_cost_fun', type=str, default='euclidean', help='The cost function used for gromov Wasserstein distance',
+       choices=['euclidean','cosine', 'tanhnormalized_euclidean'])
+    aa('--gromov_type', type=str, default='fixed_coupling', help='The type of gromov Wasserstein distance',
+       choices=['fixed_coupling', 'full_gromov', 'sampled_gromov', 'entropic_gromov', 'full_gromov_identityprior', 'BAPG_gromov', 'BAPG_gromov_identityprior'])
+    aa('--gromov_loss_fun', type=str, default='square_loss', help='The loss function used for gromov Wasserstein distance',
+       choices=['square_loss', 'kl_loss'])
+    aa('--gromov_max_iter', type=int, default=1e4, help='The maximum number of iterations for Gromov Wasserstein distance.')
+    aa('--gromov_store_coupling', type=str2bool, default=False, help='Store the coupling matrix for gromov Wasserstein distance')
 
     # STORAGE
     aa('--output_root', default="results", type=str,

@@ -1,7 +1,7 @@
 import os
 
 ## DEFINE BASEPATHS
-BASE_PATH_PROJECT = ''  # TODO: Add the path to the project folder
+BASE_PATH_PROJECT = '/home/mmorik/gwsim_data'  # Sorry for beeing so personalized for convenience
 
 ### DEFINE SUBFOLDERS
 
